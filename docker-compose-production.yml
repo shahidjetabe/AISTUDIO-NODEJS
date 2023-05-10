@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  redis:
+    container_name: redis
+    image: redis:latest
+    environment:
+      REDIS_ARGS: --save 20 1
+      X_REDIS_PORT: ${REDIS_PORT}
+
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    command: redis-server --appendonly yes
+    volumes:
+      - 'redis:/data'
+
+  mongo:
+    container_name: mongo
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb_data_container:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo mongo:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+
+  ai_studio:
+    image: ai_studio
+    depends_on:
+      - redis
+      - mongo
+    ports:
+      - 9000:80
+    networks:
+      - app_network
+    restart: unless-stopped
+
+networks:
+  app_network:
+    external: true
+    driver: bridge
+volumes:
+  redis:
+  mongodb_data_container:
